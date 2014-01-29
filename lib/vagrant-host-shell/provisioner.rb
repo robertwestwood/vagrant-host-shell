@@ -16,14 +16,22 @@ module VagrantPlugins::HostShell
       rescue
       end
       
-      result = Vagrant::Util::Subprocess.execute(
-        bash_executable,
-        '-c',
-        config.inline,
-        :notify => [:stdout, :stderr],
-        :workdir => config.cwd
-      ) do |io_name, data|
-        @machine.env.ui.info "[#{io_name}] #{data}"
+      
+      script = config.inline.is_a?(String) ? [config.inline] : config.inline
+
+      result = script.inject(nil) do |res, cmd|
+	if res.nil? || !(config.abort_on_nonzero && !res.exit_code.zero?) 
+          res = Vagrant::Util::Subprocess.execute(
+            bash_executable,
+            '-c',
+            cmd,
+            :notify => [:stdout, :stderr],
+            :workdir => config.cwd
+          ) do |io_name, data|
+            @machine.env.ui.info "[#{io_name}] #{data}"
+	  end
+	  res
+        end
       end
 
       if config.abort_on_nonzero && !result.exit_code.zero?      
