@@ -1,8 +1,23 @@
 module VagrantPlugins::HostShell
   class Provisioner < Vagrant.plugin('2', :provisioner)
     def provision
+      bash_executable = '/bin/bash'
+      begin
+	require 'win32/registry'
+	require 'pathname'
+	keyname = 'SOFTWARE\\Wow6432Node\\Cygwin\\setup'
+	Win32::Registry::HKEY_LOCAL_MACHINE.open(keyname) do |reg|
+	  value = reg['rootdir']
+	  cygwin_path = value
+	  cygwin_pn = Pathname.new(cygwin_path)
+	  bash_executable_pn = cygwin_pn + ('.' + bash_executable + '.exe')
+	  bash_executable = bash_executable_pn.to_s
+	end
+      rescue
+      end
+      
       result = Vagrant::Util::Subprocess.execute(
-        '/bin/bash',
+        bash_executable,
         '-c',
         config.inline,
         :notify => [:stdout, :stderr],
